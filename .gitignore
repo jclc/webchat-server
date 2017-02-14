@@ -1,0 +1,10 @@
+# Build directories
+obj/
+lib/
+build/
+Build/
+
+# QtCreator configuration files
+*.user
+*.autosave
+
