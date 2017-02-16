@@ -1,8 +1,8 @@
 # Build directories
 obj/
 lib/
-build/
-Build/
+*build/
+*Build/
 
 # QtCreator configuration files
 *.user
