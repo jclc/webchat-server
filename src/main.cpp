@@ -61,8 +61,15 @@ int main(int argc, char *argv[]) {
 	server.init_asio();
 
 	std::cout << "Starting server on port " << listenPort << std::endl;
-	server.listen(listenPort);
-	server.start_accept();
+	try {
+		server.listen(listenPort);
+		server.start_accept();
+		server.run();
+	} catch (websocketpp::exception &e) {
+		std::cerr << "Fatal error: " << e.what() << std::endl;
+	} catch (...) {
+		std::cerr << "Fatal error" << std::endl;
+	}
 
 	return 0;
 }
