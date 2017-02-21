@@ -31,20 +31,20 @@ int main(int argc, char *argv[]) {
 		switch (option) {
 		case 'h':
 			printHelp();
-			exit(0);
+			exit(EXIT_SUCCESS);
 		case 'V':
 			printVersion();
-			exit(0);
+			exit(EXIT_SUCCESS);
 		case 'p':
 			listenPort = atoi(options.optarg);
 			if (listenPort <= 0) {
 				std::cerr << "Error: Invalid port " << listenPort << std::endl;
-				exit(1);
+				exit(EXIT_FAILURE);
 			}
 			continue;
 		case '?':
 			std::cerr << options.errmsg << std::endl;
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -67,11 +67,13 @@ int main(int argc, char *argv[]) {
 		server.run();
 	} catch (websocketpp::exception &e) {
 		std::cerr << "Fatal error: " << e.what() << std::endl;
+		exit(EXIT_FAILURE);
 	} catch (...) {
 		std::cerr << "Fatal error" << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 // Signal handler function for gracefully terminating the program
@@ -81,7 +83,7 @@ void interruptHandler(int signal) {
 		for (chat::Database* db : db_vector) {
 			delete db;
 		}
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 }
 
