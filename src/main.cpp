@@ -2,19 +2,19 @@
 #include <iostream>
 #include <unistd.h>
 #include <csignal>
-#include <websocketpp/config/asio_no_tls.hpp>
-#include <websocketpp/server.hpp>
 #include "optparse/optparse.h"
-#include "database.h"
+#include "server.h"
+//#include <json.hpp>
 
-// Function forward declarations
+// Forward declarations
 void interruptHandler(int signal);
 void printHelp();
 void printVersion();
 
-std::vector<chat::Database*> db_vector;
+chat::Server* server = nullptr;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
+
 	// Initialise options
 	int listenPort = 80;
 
@@ -51,37 +51,20 @@ int main(int argc, char *argv[]) {
 	// Register interrupt signal handler
 	signal(SIGINT, interruptHandler);
 
-	chat::Database* db = new chat::Database();
-	db_vector.insert(db_vector.end(), db);
-
-	db->openDb("hello.db");
-
 	// Create the server
-	websocketpp::server<websocketpp::config::asio> server;
-	server.init_asio();
+	server = new chat::Server();
+	int ret = server->run(listenPort);
 
-	std::cout << "Starting server on port " << listenPort << std::endl;
-	try {
-		server.listen(listenPort);
-		server.start_accept();
-		server.run();
-	} catch (websocketpp::exception &e) {
-		std::cerr << "Fatal error: " << e.what() << std::endl;
-		exit(EXIT_FAILURE);
-	} catch (...) {
-		std::cerr << "Fatal error" << std::endl;
-		exit(EXIT_FAILURE);
-	}
-
-	return EXIT_SUCCESS;
+	delete server;
+	return ret;
 }
 
-// Signal handler function for gracefully terminating the program
+/// Signal handler function for gracefully terminating the program
 void interruptHandler(int signal) {
 	if (signal == SIGINT) {
 		std::cout << std::endl << "Interrupt signal received, terminating" << std::endl;
-		for (chat::Database* db : db_vector) {
-			delete db;
+		if (server) {
+			delete server;
 		}
 		exit(EXIT_SUCCESS);
 	}
@@ -91,12 +74,12 @@ void printHelp() {
 	std::cout
 	<< "webchat-server [options]" << std::endl
 	<< "  Options:" << std::endl
-	<< "  -h | --help" << std::endl
-	<< "    Display this help message" << std::endl
-	<< "  -V | --version" << std::endl
-	<< "    Display program version" << std::endl
-	<< "  -p | --port <port number>" << std::endl
-	<< "    Which listen port to use" << std::endl;
+	<< "      -h | --help" << std::endl
+	<< "        Display this help message" << std::endl
+	<< "      -V | --version" << std::endl
+	<< "        Display program version" << std::endl
+	<< "      -p | --port <port number>" << std::endl
+	<< "        Which port to listen" << std::endl;
 }
 
 void printVersion() {
