@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <csignal>
 #include "optparse/optparse.h"
-#include "server.h"
+#include "server.hpp"
 //#include <json.hpp>
 
 // Forward declarations

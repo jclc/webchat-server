@@ -2,7 +2,7 @@
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 #include <sqlite3.h>
-#include "server.h"
+#include "server.hpp"
 
 namespace chat {
 
