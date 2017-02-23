@@ -1,4 +1,4 @@
-#include "version.h"
+#include "version.hpp"
 #include <iostream>
 #include <unistd.h>
 #include <csignal>
