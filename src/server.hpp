@@ -4,32 +4,40 @@
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 #include <sqlite3.h>
+#include <map>
+#include "chatroom.hpp"
 
 namespace chat {
+
+class Chatroom;
+
+typedef websocketpp::connection_hdl connection_hdl;
+typedef websocketpp::server<websocketpp::config::asio>::message_ptr message_ptr;
 
 class Server {
 public:
 	Server();
 	~Server();
 
-	int run(int port);
+	int run(const int port);
 
 	// Connection handlers
-	typedef websocketpp::connection_hdl connection_hdl;
-	typedef websocketpp::server<websocketpp::config::asio>::message_ptr message_ptr;
 	void onConnectionOpen(connection_hdl);
 	void onConnectionClose(connection_hdl);
 	void onMessage(connection_hdl, message_ptr);
+	std::string getNickname(const connection_hdl con_hdl) const;
+	bool setNickname(connection_hdl con_hdl, std::string nick);
 
 private:
 	bool initDatabases();
 
+	std::mutex m_lock;
 	int m_port;
 	websocketpp::server<websocketpp::config::asio> m_server;
 	bool m_isListening;
-	sqlite3* db_users;
 	sqlite3* db_chatrooms;
-	std::mutex m_lock;
+	std::vector<chat::Chatroom*> m_chatrooms;
+	std::map<connection_hdl, std::string, std::owner_less<connection_hdl> > m_nicknames;
 
 };
 

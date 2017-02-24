@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
 	int listenPort = 80;
 
 	// Parse CLI arguments
+	// TODO: Change to a better parser, this one sucks
 	struct optparse options;
 	optparse_init(&options, argv);
 	struct optparse_long longopts[] = {
