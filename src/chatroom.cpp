@@ -3,6 +3,8 @@
 #include <sqlite3.h>
 #include <exception>
 #include <functional>
+#include "database.hpp"
+#include <sstream>
 
 namespace chat {
 
@@ -28,7 +30,7 @@ Chatroom::Chatroom(Server* server, std::string name) {
 
 	char* error = 0;
 	std::string query =
-			"CREATE TABLE IF NOT EXISTS Messages(Id INT, Timestamp TEXT, Content TEXT)";
+			"CREATE TABLE IF NOT EXISTS Messages(Id INT PRIMARY KEY, User TEXT, Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, Content TEXT)";
 	rc = sqlite3_exec(db_chatroom, query.c_str(), 0, 0, &error);
 
 	if (rc != SQLITE_OK) {
@@ -53,8 +55,21 @@ void Chatroom::connectUser(connection_hdl hdl) {
 	connection->set_message_handler(std::bind(&Chatroom::onMessage,this,_1,_2));
 	connection->set_close_handler(std::bind(&Chatroom::onConnectionClose,this,_1));
 
-	std::lock_guard<std::mutex> lock(m_lock);
+	m_lock.lock();
 	connections.insert(hdl);
+	m_lock.unlock();
+
+	json messages = json::array();
+	MessageData msgdata;
+	database::getMessages(db_chatroom, msgdata, 100);
+	for (Message* message : *msgdata.data) {
+		json msg;
+		msg["timestamp"] = message->timestamp;
+		msg["user"] = message->user;
+		msg["content"] = message->content;
+		messages.push_back(msg);
+	}
+	m_parentServer->sendMessage(hdl, messages.dump());
 }
 
 void Chatroom::onConnectionClose(connection_hdl hdl) {

@@ -8,6 +8,7 @@
 #include "chatroom.hpp"
 #include "json.hpp"
 #include <regex>
+#include "database.hpp"
 
 namespace chat {
 
@@ -22,14 +23,13 @@ typedef websocketpp::lib::error_code error;
 Server::Server() {
 	using std::placeholders::_1;
 	using std::placeholders::_2;
-	using std::bind;
 
 	m_isListening = false;
 	db_chatrooms = nullptr;
 	m_server.init_asio();
-	m_server.set_open_handler(bind(&Server::onConnectionOpen,this,_1));
-	m_server.set_close_handler(bind(&Server::onConnectionClose,this,_1));
-	m_server.set_message_handler(bind(&Server::onMessage,this,_1,_2));
+	m_server.set_open_handler(std::bind(&Server::onConnectionOpen,this,_1));
+	m_server.set_close_handler(std::bind(&Server::onConnectionClose,this,_1));
+	m_server.set_message_handler(std::bind(&Server::onMessage,this,_1,_2));
 }
 
 Server::~Server() {
@@ -71,14 +71,14 @@ bool Server::initDatabases() {
 		return false;
 	}
 
-	std::string query = "CREATE TABLE IF NOT EXISTS Chatrooms(Name TEXT)";
-	rc = sqlite3_exec(db_chatrooms, query.c_str(), 0, 0, &err_msg);
-	if (rc != SQLITE_OK) {
-		std::cerr << "Failed to initialise chatroom database: " << err_msg << std::endl;
-		sqlite3_close(db_chatrooms);
-		db_chatrooms = nullptr;
-		return false;
+	ChatroomData chdata;
+	database::getChatrooms(db_chatrooms, chdata);
+	for (auto name : *chdata.data) {
+		auto chatroom = new Chatroom(this, name);
+		m_chatrooms.push_back(chatroom);
+		std::cout << "Opened existing chatroom " << name << std::endl;
 	}
+
 	return true;
 }
 
@@ -93,17 +93,10 @@ bool Server::createChatroom(std::string name) {
 		return false;
 
 	// Validate the name: can only have alphanumeric characters or _-().!?
-	std::regex validate("[\\ [:alnum:]]+");
+	std::regex validate("^[-_().!? [:alnum:]]+$");
 	if (std::regex_match(name, validate)) {
 		Chatroom* chatroom;
-		try {
-			chatroom = new Chatroom(this, name);
-			m_chatrooms.push_back(chatroom);
-		} catch (...) {
-			std::cerr << "Failed to create chatroom '" << name << "'" << std::endl;
-			delete chatroom;
-			return false;
-		}
+		database::insertChatroom(db_chatrooms, name);
 		std::cout << "Created chatroom '" << name << "'" << std::endl;
 		return true;
 	}
@@ -147,7 +140,7 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 	} catch (...) {
 		// Client sent us invalid JSON. Unacceptable!
 		error e;
-		m_server.send(hdl, "{\"alert\": \"Invalid JSON data\"}", opcode::text, e);
+		sendMessage(hdl, "{\"alert\": \"Invalid JSON data\"}");
 		m_server.close(hdl, 1003, "Invalid JSON data");
 		return;
 	}

@@ -22,6 +22,7 @@ set(SOURCES
 	src/optparse/optparse.c
 	src/server.cpp
 	src/chatroom.cpp
+	src/database.cpp
 	)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
