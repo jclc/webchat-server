@@ -67,17 +67,25 @@ bool Server::initDatabases() {
 	return true;
 }
 
-void Server::onConnectionOpen(connection_hdl hdl) {
+void Server::addConnection(connection_hdl hdl) {
 	std::cout << "New connection: " << hdl.lock().get() << std::endl;
 	std::lock_guard<std::mutex> lock(m_lock);
 	// Give an empty nickname at the start
 	m_nicknames[hdl] = "";
 }
 
-void Server::onConnectionClose(connection_hdl hdl) {
+void Server::removeConnection(connection_hdl hdl) {
 	std::cout << "Connection closed: " << hdl.lock().get() << std::endl;
 	std::lock_guard<std::mutex> lock(m_lock);
 	m_nicknames.erase(hdl);
+}
+
+void Server::onConnectionOpen(connection_hdl hdl) {
+	addConnection(hdl);
+}
+
+void Server::onConnectionClose(connection_hdl hdl) {
+	removeConnection(hdl);
 }
 
 /**

@@ -25,15 +25,19 @@ public:
 	void onConnectionOpen(connection_hdl);
 	void onConnectionClose(connection_hdl);
 	void onMessage(connection_hdl, message_ptr);
+
 	std::string getNickname(const connection_hdl con_hdl) const;
 	bool setNickname(connection_hdl con_hdl, std::string nick);
+	void addConnection(connection_hdl hdl);
+	void removeConnection(connection_hdl hdl);
+
+	websocketpp::server<websocketpp::config::asio> m_server;
 
 private:
 	bool initDatabases();
 
 	std::mutex m_lock;
 	int m_port;
-	websocketpp::server<websocketpp::config::asio> m_server;
 	bool m_isListening;
 	sqlite3* db_chatrooms;
 	std::vector<chat::Chatroom*> m_chatrooms;
