@@ -10,6 +10,8 @@ using namespace nlohmann; // json
 typedef websocketpp::server<websocketpp::config::asio> t_server;
 typedef websocketpp::connection_hdl connection_hdl;
 typedef websocketpp::server<websocketpp::config::asio>::message_ptr message_ptr;
+typedef websocketpp::frame::opcode::value opcode;
+typedef websocketpp::lib::error_code error;
 
 using std::placeholders::_1;
 using std::placeholders::_2;
@@ -17,7 +19,8 @@ using std::bind;
 
 Chatroom::Chatroom(Server* server, std::string name) {
 	m_parentServer = server;
-	int rc = sqlite3_open(name.c_str(), &db_chatroom);
+	std::string filename = "db/chatrooms/" + name + ".db";
+	int rc = sqlite3_open(filename.c_str(), &db_chatroom);
 	if (rc != SQLITE_OK) {
 		std::cerr << "Error opening chatroom database: " << sqlite3_errmsg(db_chatroom) << std::endl;
 		throw std::exception();
@@ -34,11 +37,13 @@ Chatroom::Chatroom(Server* server, std::string name) {
 		sqlite3_close(db_chatroom);
 		throw std::exception();
 	}
+	m_name = name;
 }
 
 Chatroom::~Chatroom() {
 //	std::lock_guard<std::mutex> lock(m_lock);
 	sqlite3_close(db_chatroom);
+	std::cout << "Chatroom " << m_name << " closed" << std::endl;
 }
 
 void Chatroom::connectUser(connection_hdl hdl) {
@@ -60,8 +65,22 @@ void Chatroom::onConnectionClose(connection_hdl hdl) {
 	connections.erase(hdl);
 }
 
-void Chatroom::onMessage(connection_hdl hdl, message_ptr message) {
-
+void Chatroom::onMessage(connection_hdl hdl, message_ptr msg) {
+	json message;
+	try {
+		message = json::parse(msg->get_payload());
+	} catch (...) {
+		// Client sent us invalid JSON
+		error e;
+		m_parentServer->m_server.send(hdl, "{\"alert\": \"Invalid JSON data\"}", opcode::text, e);
+		m_parentServer->m_server.close(hdl, 1003, "Invalid JSON data");
+		connections.erase(hdl);
+		return;
+	}
+	auto search = message.find("message");
+	if (search != message.end() && message["message"].is_string()) {
+		std::cout << "got message" << std::endl;
+	}
 }
 
 } // namespace

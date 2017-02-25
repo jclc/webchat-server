@@ -33,5 +33,5 @@ target_link_libraries(${PROJECT_NAME}
 
 # Create the db directory for sqlite
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/db")
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/db/rooms")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/db/chatrooms")
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/resource")

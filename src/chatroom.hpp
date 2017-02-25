@@ -18,20 +18,23 @@ typedef websocketpp::server<websocketpp::config::asio>::message_ptr message_ptr;
 
 class Chatroom {
 public:
-	Chatroom(Server* server, std::string name);
+	Chatroom(Server* server, std::string m_name);
 	~Chatroom();
 
 	// Connection handlers
 	void onConnectionClose(connection_hdl hdl);
-	void onMessage(connection_hdl hdl, message_ptr message);
+	void onMessage(connection_hdl hdl, message_ptr msg);
 
 	/// Connect user from Server to Chatroom
 	void connectUser(connection_hdl hdl);
+
+	std::string m_name;
 
 private:
 	sqlite3* db_chatroom;
 	std::mutex m_lock;
 	Server* m_parentServer;
+	/// connection_hdl are weak pointers, so we need to store them like this
 	std::set<connection_hdl, std::owner_less<connection_hdl>> connections;
 
 	/// Get recent chat history as a json string

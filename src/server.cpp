@@ -7,8 +7,12 @@
 #include "server.hpp"
 #include "chatroom.hpp"
 #include "json.hpp"
+#include <regex>
 
 namespace chat {
+
+#define CHATROOM_NAME_MIN_LENGTH 2
+#define CHATROOM_NAME_MAX_LENGTH 64
 
 using namespace nlohmann; // for json (jesus, who names namespaces after themselves?)
 typedef websocketpp::server<websocketpp::config::asio> t_server;
@@ -58,13 +62,56 @@ int Server::run(const int port) {
 
 bool Server::initDatabases() {
 	int rc = sqlite3_open("db/chatrooms.db", &db_chatrooms);
+	char* err_msg;
+
 	if (rc != SQLITE_OK) {
-		std::cerr << "Failed to open chatroom databse: " << sqlite3_errmsg(db_chatrooms) << std::endl;
+		std::cerr << "Failed to open chatroom database: " << sqlite3_errmsg(db_chatrooms) << std::endl;
+		sqlite3_close(db_chatrooms);
+		db_chatrooms = nullptr;
+		return false;
+	}
+
+	std::string query = "CREATE TABLE IF NOT EXISTS Chatrooms(Name TEXT)";
+	rc = sqlite3_exec(db_chatrooms, query.c_str(), 0, 0, &err_msg);
+	if (rc != SQLITE_OK) {
+		std::cerr << "Failed to initialise chatroom database: " << err_msg << std::endl;
 		sqlite3_close(db_chatrooms);
 		db_chatrooms = nullptr;
 		return false;
 	}
 	return true;
+}
+
+bool Server::createChatroom(std::string name) {
+	for (Chatroom* chatroom : m_chatrooms) {
+		if (chatroom->m_name == name) {
+			// Chatroom already exists; return
+			return false;
+		}
+	}
+	if (name.length() < CHATROOM_NAME_MIN_LENGTH || name.length() > CHATROOM_NAME_MAX_LENGTH)
+		return false;
+
+	// Validate the name: can only have alphanumeric characters or _-().!?
+	std::regex validate("[\\ [:alnum:]]+");
+	if (std::regex_match(name, validate)) {
+		Chatroom* chatroom;
+		try {
+			chatroom = new Chatroom(this, name);
+			m_chatrooms.push_back(chatroom);
+		} catch (...) {
+			std::cerr << "Failed to create chatroom '" << name << "'" << std::endl;
+			delete chatroom;
+			return false;
+		}
+		std::cout << "Created chatroom '" << name << "'" << std::endl;
+		return true;
+	}
+	return false;
+}
+
+void Server::sendMessage(connection_hdl hdl, std::string msg) {
+	m_server.send(hdl, msg, websocketpp::frame::opcode::text);
 }
 
 void Server::addConnection(connection_hdl hdl) {
@@ -104,15 +151,28 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 		m_server.close(hdl, 1003, "Invalid JSON data");
 		return;
 	}
-	auto search = message.find("action");
-	std::string action = "none";
-	if (search != message.end()) {
-		// FIX: crashes if not string
-		action = message["action"];
-	}
-	std::cout << "action: " << action << std::endl;
+
 	// Handle the message
-	std::cout << "Active connections: " << m_nicknames.size() << std::endl;
+	auto search = message.find("create_chatroom");
+	if (search != message.end() && message["create_chatroom"].is_string()) {
+		// Instructed to create a new chatroom
+		std::string name = message["create_chatroom"];
+		createChatroom(name);
+		return;
+	}
+	search = message.find("join_chatroom");
+	if (search != message.end() && message["join_chatroom"].is_string()) {
+		// Instructed to join a new chatroom
+		std::string name = message["join_chatroom"];
+		for (Chatroom* chatroom : m_chatrooms) {
+			if (chatroom->m_name == name) {
+				chatroom->connectUser(hdl);
+				return;
+			}
+		}
+		// Chatroom not found; return
+		return;
+	}
 
 }
 
