@@ -70,18 +70,20 @@ void getMessages(sqlite3 *db, MessageData &data, unsigned int howMany) {
 	return;
 }
 
-bool insertMessage(sqlite3 *db, std::string user, std::string content) {
+bool insertMessage(sqlite3 *db, long timestamp, std::string user, std::string content) {
 	sqlite3_stmt* res;
 
-	std::string query = "INSERT INTO Messages (User, Content) VALUES(?, ?)";
+	std::string query = "INSERT INTO Messages (Timestamp, User, Content) VALUES(?, ?, ?);"
+			"SELECT last_inserted_rowid()";
 	int rc = sqlite3_prepare_v2(db, query.c_str(), -1, &res, 0);
 	if (rc != SQLITE_OK) {
 		std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
 		return false;
 	}
 
-	sqlite3_bind_text(res, 1, user.c_str(), -1, nullptr);
-	sqlite3_bind_text(res, 2, content.c_str(), -1, nullptr);
+	sqlite3_bind_int64(res, 1, timestamp);
+	sqlite3_bind_text(res, 2, user.c_str(), -1, nullptr);
+	sqlite3_bind_text(res, 3, content.c_str(), -1, nullptr);
 	sqlite3_step(res);
 
 	sqlite3_finalize(res);

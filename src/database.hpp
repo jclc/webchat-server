@@ -40,7 +40,7 @@ namespace database {
 void getChatrooms(sqlite3* db, ChatroomData& data);
 bool insertChatroom(sqlite3* db, std::string name);
 void getMessages(sqlite3* db, MessageData& data, unsigned int howMany);
-bool insertMessage(sqlite3* db, std::string user, std::string content);
+bool insertMessage(sqlite3* db, long timestamp, std::string user, std::string content);
 
 } // namespace database
 

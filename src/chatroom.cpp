@@ -5,6 +5,8 @@
 #include <functional>
 #include "database.hpp"
 #include <sstream>
+#include <ctime>
+#include "json.hpp"
 
 namespace chat {
 
@@ -86,15 +88,54 @@ void Chatroom::onMessage(connection_hdl hdl, message_ptr msg) {
 		message = json::parse(msg->get_payload());
 	} catch (...) {
 		// Client sent us invalid JSON
-		error e;
-		m_parentServer->m_server.send(hdl, "{\"alert\": \"Invalid JSON data\"}", opcode::text, e);
 		m_parentServer->m_server.close(hdl, 1003, "Invalid JSON data");
 		connections.erase(hdl);
 		return;
 	}
 	auto search = message.find("message");
 	if (search != message.end() && message["message"].is_string()) {
-		std::cout << "got message" << std::endl;
+		// Received valid message from client
+		std::string user = m_parentServer->getNickname(hdl);
+		if (user == "") {
+			// User hasn't chosen a nickname yet
+			m_parentServer->sendMessage(hdl,
+				"{\"alert\": \"Please register a nickname before sending messages\"}");
+			return;
+		}
+		std::string content = message["message"];
+		long timestamp = std::time(nullptr);
+		// temporary debug output
+		std::cout << "(" << m_name << ") " << user << ": " << content << std::endl;
+		database::insertMessage(db_chatroom, timestamp, user, content);
+		json msg = {
+			{"timestamp", timestamp},
+			{"user", user},
+			{"content", content}
+		};
+		std::string dump = msg.dump();
+		this->broadcastMessage(msg.dump());
+		return;
+	}
+	search = message.find("set_nickname");
+	if (search != message.end() && message["set_nickname"].is_string()) {
+		// User wants to reserve a nickname
+		// TODO: duplicate code from chat::Server, unify somehow
+		std::string nick = message["set_nickname"];
+		if (m_parentServer->setNickname(hdl, nick)) {
+			m_parentServer->sendMessage(hdl, "{\"status\":\"Nickname set\"}");
+		} else {
+			m_parentServer->sendMessage(hdl, "{\"alert\":\"Nickname already reserved\"}");
+		}
+		return;
+	}
+}
+
+/// Broadcast a json message to all members of a chatroom
+/// Needs to be formatted first
+void Chatroom::broadcastMessage(std::string message) {
+	std::cout << "Broadcasting message: " << message << std::endl;
+	for (connection_hdl hdl : connections) {
+		m_parentServer->sendMessage(hdl, message);
 	}
 }
 

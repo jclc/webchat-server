@@ -39,9 +39,9 @@ private:
 
 	/// Get recent chat history as a json string
 	std::string getChatHistory(int howMany);
-	void receiveMessage(json message);
-	void storeMessage(json message);
-	void broadcastMessage(json message);
+	void receiveMessage(std::string message);
+	void storeMessage(std::string message);
+	void broadcastMessage(std::string message);
 
 };
 

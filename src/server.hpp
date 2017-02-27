@@ -31,8 +31,9 @@ public:
 	void sendMessage(connection_hdl hdl, std::string msg);
 	std::string getNickname(const connection_hdl con_hdl) const;
 	bool setNickname(connection_hdl con_hdl, std::string nick);
-	void addConnection(connection_hdl hdl);
-	void removeConnection(connection_hdl hdl);
+	void clearNickname(connection_hdl con_hdl);
+	void addConnection(connection_hdl con_hdl);
+	void removeConnection(connection_hdl con_hdl);
 
 	websocketpp::server<websocketpp::config::asio> m_server;
 

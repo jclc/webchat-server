@@ -97,6 +97,7 @@ bool Server::createChatroom(std::string name) {
 	if (std::regex_match(name, validate)) {
 		Chatroom* chatroom;
 		database::insertChatroom(db_chatrooms, name);
+		m_chatrooms.push_back(chatroom);
 		std::cout << "Created chatroom '" << name << "'" << std::endl;
 		return true;
 	}
@@ -139,8 +140,6 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 		message = json::parse(msg->get_payload());
 	} catch (...) {
 		// Client sent us invalid JSON. Unacceptable!
-		error e;
-		sendMessage(hdl, "{\"alert\": \"Invalid JSON data\"}");
 		m_server.close(hdl, 1003, "Invalid JSON data");
 		return;
 	}
@@ -166,7 +165,28 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 		// Chatroom not found; return
 		return;
 	}
-
+	search = message.find("set_nickname");
+	if (search != message.end() && message["set_nickname"].is_string()) {
+		// User wants to reserve a nickname
+		std::string nick = message["set_nickname"];
+		if (setNickname(hdl, nick)) {
+			sendMessage(hdl, "{\"status\":\"Nickname set\"}");
+		} else {
+			sendMessage(hdl, "{\"alert\":\"Nickname already reserved\"}");
+		}
+		return;
+	}
+	search = message.find("get_chatrooms");
+	if (search != message.end()) {
+		// User wants to get a list of chatrooms
+		json response;
+		response["chatrooms"] = json::array();
+		for (Chatroom* chatroom : m_chatrooms) {
+			response["chatrooms"].push_back(chatroom->m_name);
+		}
+		sendMessage(hdl, response.dump());
+		return;
+	}
 }
 
 std::string Server::getNickname(const connection_hdl con_hdl) const {
@@ -179,13 +199,21 @@ std::string Server::getNickname(const connection_hdl con_hdl) const {
 }
 
 bool Server::setNickname(connection_hdl con_hdl, std::string nick) {
-	if (getNickname(con_hdl) != "") {
-		// Nickname already reserved
-		return false;
+	// TODO: this is an inefficient method since the data in std::map is unordered
+	for (auto it = m_nicknames.begin(); it != m_nicknames.end(); ++it) {
+		if (it->second == nick) {
+			// Nickname already reserved by someone else
+			return false;
+		}
 	}
 	std::lock_guard<std::mutex> lock(m_lock);
 	m_nicknames[con_hdl] = nick;
 	return true;
+}
+
+void Server::clearNickname(connection_hdl con_hdl) {
+	std::lock_guard<std::mutex> lock(m_lock);
+	m_nicknames[con_hdl] = "";
 }
 
 } // namespace
