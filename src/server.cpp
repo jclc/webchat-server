@@ -9,6 +9,7 @@
 #include "json.hpp"
 #include <regex>
 #include "database.hpp"
+#include <fstream>
 
 namespace chat {
 
@@ -27,9 +28,10 @@ Server::Server() {
 	m_isListening = false;
 	db_chatrooms = nullptr;
 	m_server.init_asio();
-	m_server.set_open_handler(std::bind(&Server::onConnectionOpen,this,_1));
-	m_server.set_close_handler(std::bind(&Server::onConnectionClose,this,_1));
-	m_server.set_message_handler(std::bind(&Server::onMessage,this,_1,_2));
+	m_server.set_open_handler(std::bind(&Server::onConnectionOpen, this, _1));
+	m_server.set_close_handler(std::bind(&Server::onConnectionClose, this, _1));
+	m_server.set_message_handler(std::bind(&Server::onMessage, this, _1, _2));
+	m_server.set_http_handler(std::bind(&Server::onHttp, this, _1));
 }
 
 Server::~Server() {
@@ -103,8 +105,8 @@ bool Server::createChatroom(std::string name) {
 	if (name.length() < CHATROOM_NAME_MIN_LENGTH || name.length() > CHATROOM_NAME_MAX_LENGTH)
 		return false;
 
-	// Validate the name: can only have alphanumeric characters or _-().,!?'
-	std::regex validate("^[-_().,!?' [:alnum:]]+$");
+	// Validate the name: can only have alphanumeric characters or _-().,!?';
+	std::regex validate("^[-_().,!?'; [:alnum:]]+$");
 	if (std::regex_match(name, validate)) {
 		if (database::insertChatroom(db_chatrooms, name)) {
 			Chatroom* chatroom = new Chatroom(this, name);
@@ -130,6 +132,31 @@ void Server::removeConnection(connection_hdl hdl) {
 	std::cout << "Connection closed: " << hdl.lock().get() << std::endl;
 	std::lock_guard<std::mutex> lock(m_lock);
 	m_nicknames.erase(hdl);
+}
+
+void Server::onHttp(connection_hdl hdl) {
+	// Included with this server comes a basic single-page HTML client.
+	// This is NOT a scalable solution, recommended to switch to a reverse-
+	// proxy setup to a real HTTP server in the future. Alternatively
+	// external clients can be used with the JSON API.
+	t_server::connection_ptr connection = m_server.get_con_from_hdl(hdl);
+	std::ifstream index;
+	index.open("index.html");
+	if (!index) {
+		std::cout << "Error: No index.html found" << std::endl;
+		connection->set_body("404 Not found");
+		connection->set_status(websocketpp::http::status_code::not_found);
+		return;
+	}
+	index.seekg(0, std::ios::end);
+	std::string response;
+	response.reserve(index.tellg());
+	index.seekg(0, std::ios::beg);
+
+	response.assign((std::istreambuf_iterator<char>(index)), std::istreambuf_iterator<char>());
+
+	connection->set_body(response);
+	connection->set_status(websocketpp::http::status_code::ok);
 }
 
 void Server::onConnectionOpen(connection_hdl hdl) {
@@ -161,7 +188,7 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 		// Instructed to create a new chatroom
 		std::string name = message["create_chatroom"];
 		if (createChatroom(name)) {
-
+			std::cout << "Created new chatroom " << name << std::endl;
 		}
 		return;
 	}

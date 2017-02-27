@@ -23,6 +23,7 @@ public:
 	int run(const int port);
 
 	// Connection handlers
+	void onHttp(connection_hdl);
 	void onConnectionOpen(connection_hdl);
 	void onConnectionClose(connection_hdl);
 	void onMessage(connection_hdl, message_ptr);
