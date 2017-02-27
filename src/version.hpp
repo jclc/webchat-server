@@ -3,6 +3,6 @@
 
 // Edit program version/devbranch in this file; we use semantic versioning
 
-#define PROGRAM_VERSION "0.0.3"
+#define PROGRAM_VERSION "0.0.4"
 
 #endif //VERSION_H
