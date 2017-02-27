@@ -32,7 +32,7 @@ Chatroom::Chatroom(Server* server, std::string name) {
 
 	char* error = 0;
 	std::string query =
-			"CREATE TABLE IF NOT EXISTS Messages(Id INT PRIMARY KEY, User TEXT, Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, Content TEXT)";
+			"CREATE TABLE IF NOT EXISTS Messages(Id INT PRIMARY KEY, User TEXT, Timestamp INTEGER, Content TEXT)";
 	rc = sqlite3_exec(db_chatroom, query.c_str(), 0, 0, &error);
 
 	if (rc != SQLITE_OK) {
@@ -61,7 +61,8 @@ void Chatroom::connectUser(connection_hdl hdl) {
 	connections.insert(hdl);
 	m_lock.unlock();
 
-	json messages = json::array();
+	json messages;
+	messages["new_messages"] = json::array();
 	MessageData msgdata;
 	database::getMessages(db_chatroom, msgdata, 100);
 	for (Message* message : *msgdata.data) {
@@ -69,7 +70,7 @@ void Chatroom::connectUser(connection_hdl hdl) {
 		msg["timestamp"] = message->timestamp;
 		msg["user"] = message->user;
 		msg["content"] = message->content;
-		messages.push_back(msg);
+		messages["new_messages"].push_back(msg);
 	}
 	m_parentServer->sendMessage(hdl, messages.dump());
 }
@@ -107,12 +108,20 @@ void Chatroom::onMessage(connection_hdl hdl, message_ptr msg) {
 		// temporary debug output
 		std::cout << "(" << m_name << ") " << user << ": " << content << std::endl;
 		database::insertMessage(db_chatroom, timestamp, user, content);
-		json msg = {
+		json msg;
+		msg["new_messages"] = {{
 			{"timestamp", timestamp},
 			{"user", user},
-			{"content", content}
+			{"content", content}}
 		};
-		std::string dump = msg.dump();
+//		msg["new_messages"][0]["timestamp"] = timestamp;
+//		msg["new_messages"][0]["user"] = user;
+//		msg["new_messages"][0]["content"] = content;
+//		json msg = {
+//			{"timestamp", timestamp},
+//			{"user", user},
+//			{"content", content}
+//		};
 		this->broadcastMessage(msg.dump());
 		return;
 	}

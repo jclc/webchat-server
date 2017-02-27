@@ -20,7 +20,7 @@ private:
 };
 
 struct Message {
-	std::string timestamp;
+	long timestamp;
 	std::string user;
 	std::string content;
 };

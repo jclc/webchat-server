@@ -35,7 +35,7 @@ void getChatrooms(sqlite3 *db, ChatroomData& data) {
 bool insertChatroom(sqlite3 *db, std::string name) {
 	sqlite3_stmt* res;
 
-	std::string query = "INSERT INTO Chatrooms VALUES( ? )";
+	std::string query = "INSERT INTO Chatrooms (Name) VALUES( ? )";
 	int rc = sqlite3_prepare_v2(db, query.c_str(), -1, &res, 0);
 	if (rc != SQLITE_OK) {
 		std::cerr << "Failed to execute statement: " << sqlite3_errmsg(db) << std::endl;
@@ -46,6 +46,7 @@ bool insertChatroom(sqlite3 *db, std::string name) {
 	sqlite3_step(res);
 
 	sqlite3_finalize(res);
+	return true;
 }
 
 void getMessages(sqlite3 *db, MessageData &data, unsigned int howMany) {
@@ -62,7 +63,7 @@ void getMessages(sqlite3 *db, MessageData &data, unsigned int howMany) {
 		MessageData* data = (MessageData*) param;
 		Message* msg = new Message();
 		msg->user = argv[0];
-		msg->timestamp = argv[1];
+		msg->timestamp = std::atoi(argv[1]);
 		msg->content = argv[2];
 		data->data->push_back(msg);
 		return 0;

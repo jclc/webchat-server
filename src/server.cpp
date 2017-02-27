@@ -62,13 +62,24 @@ int Server::run(const int port) {
 
 bool Server::initDatabases() {
 	int rc = sqlite3_open("db/chatrooms.db", &db_chatrooms);
-	char* err_msg;
 
 	if (rc != SQLITE_OK) {
 		std::cerr << "Failed to open chatroom database: " << sqlite3_errmsg(db_chatrooms) << std::endl;
 		sqlite3_close(db_chatrooms);
 		db_chatrooms = nullptr;
 		return false;
+	}
+
+	char* error = 0;
+	std::string query =
+			"CREATE TABLE IF NOT EXISTS Chatrooms(Id INT PRIMARY KEY, Name TEXT)";
+	rc = sqlite3_exec(db_chatrooms, query.c_str(), 0, 0, &error);
+
+	if (rc != SQLITE_OK) {
+		std::cerr << "SQL error when creating database table: " << error << std::endl;
+		sqlite3_free(error);
+		sqlite3_close(db_chatrooms);
+		throw std::exception();
 	}
 
 	ChatroomData chdata;
@@ -92,14 +103,14 @@ bool Server::createChatroom(std::string name) {
 	if (name.length() < CHATROOM_NAME_MIN_LENGTH || name.length() > CHATROOM_NAME_MAX_LENGTH)
 		return false;
 
-	// Validate the name: can only have alphanumeric characters or _-().!?
-	std::regex validate("^[-_().!? [:alnum:]]+$");
+	// Validate the name: can only have alphanumeric characters or _-().,!?'
+	std::regex validate("^[-_().,!?' [:alnum:]]+$");
 	if (std::regex_match(name, validate)) {
-		Chatroom* chatroom;
-		database::insertChatroom(db_chatrooms, name);
-		m_chatrooms.push_back(chatroom);
-		std::cout << "Created chatroom '" << name << "'" << std::endl;
-		return true;
+		if (database::insertChatroom(db_chatrooms, name)) {
+			Chatroom* chatroom = new Chatroom(this, name);
+			m_chatrooms.push_back(chatroom);
+			return true;
+		}
 	}
 	return false;
 }
@@ -149,7 +160,9 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 	if (search != message.end() && message["create_chatroom"].is_string()) {
 		// Instructed to create a new chatroom
 		std::string name = message["create_chatroom"];
-		createChatroom(name);
+		if (createChatroom(name)) {
+
+		}
 		return;
 	}
 	search = message.find("join_chatroom");
@@ -158,11 +171,13 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 		std::string name = message["join_chatroom"];
 		for (Chatroom* chatroom : m_chatrooms) {
 			if (chatroom->m_name == name) {
+				sendMessage(hdl, "{\"status\":\"Joined channel\"}");
 				chatroom->connectUser(hdl);
 				return;
 			}
 		}
 		// Chatroom not found; return
+		sendMessage(hdl, "{\"alert\":\"Chatroom doesn't exist\"}");
 		return;
 	}
 	search = message.find("set_nickname");
