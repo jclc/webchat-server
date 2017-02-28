@@ -209,6 +209,7 @@
       user.innerHTML = " " + sanitiseHtmlString(messages[i].user) + ": ";
       var content = document.createElement("SPAN");
       content.innerHTML = sanitiseHtmlString(messages[i].content);
+      //content.text(messages[i].content);
       item.appendChild(timestamp);
       item.appendChild(user);
       item.appendChild(content);
@@ -241,15 +242,15 @@
   }
   
   function sanitiseHtmlString(original) {
-    var sanitised = original.replace("&", "&amp;");
-    sanitised = original.replace("<", "&lt;");
-    sanitised = original.replace(">", "&gt;");
+    var sanitised = original.replace(/&/g, "");
+    sanitised = original.replace(/</g, "");
+    sanitised = original.replace(/>/g, "");
     return sanitised;
   }
   
   function sanitiseJsonString(original) {
-    var sanitised = original.replace("\\", "\\\\");
-    sanitised = original.replace("\"", "\\\"");
+    var sanitised = original.replace(/\\/g, "\\\\");
+    sanitised = original.replace(/\"/g, "\\\"");
     return sanitised;
   }
   
