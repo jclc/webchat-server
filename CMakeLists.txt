@@ -36,3 +36,5 @@ target_link_libraries(${PROJECT_NAME}
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/db")
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/db/chatrooms")
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/resource")
+
+configure_file("${CMAKE_SOURCE_DIR}/index.html" "${CMAKE_BINARY_DIR}/index.html" COPYONLY)

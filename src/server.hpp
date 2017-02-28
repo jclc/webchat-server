@@ -49,6 +49,7 @@ private:
 	std::vector<chat::Chatroom*> m_chatrooms;
 	/// connection_hdl are weak pointers, so we need to store them like this
 	std::map<connection_hdl, std::string, std::owner_less<connection_hdl> > m_nicknames;
+	void sendChatrooms(connection_hdl hdl);
 
 };
 

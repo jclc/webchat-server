@@ -1,0 +1,257 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Cool Webchat</title>
+  <style>
+    .chatbox {
+      width: 600px;
+      height: 500px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="div-loading"><h1>...AWAITING RESPONSE...</h1></div>
+  
+  <div hidden id="div-header">
+    <h1>Welcome to Cool Webchat!</h1>
+    <p id="nickname-status">You are currently not using a nickname.</p>
+    <input type="text" id="nickname-input" />
+    <input type="button" id="nickname-submit" value="Change nickname" />
+    <p hidden >Connection status: <span id="connection-status">Not connected</span></p>
+  </div>
+  
+  <div hidden id="div-chatroom-selection">
+    <h2>Available chatrooms</h2>
+    <input type="text" id="chatroom-input" />
+    <input type="button" id="chatroom-submit" value="Create new chatroom" />
+    <ul id="chatroom-list">
+    </ul>
+  </div>
+  
+  <div hidden id="div-chatroom">
+    <h2 id="chatroom-name">chatroom</h2>
+    <div id="message-box" class="chatbox">
+      <ul id="chatroom-message-list">
+      </ul>
+    </div>
+    <p>
+      <form>
+        <input type="text" id="new-message-input" />
+        <input type="submit" id="new-message-submit" formaction="javascript:postMessage();" value="Submit" />
+      </form>
+    </p>
+  </div>
+  
+</body>
+</html>
+<script language="javascript" type="text/javascript">
+  // Change the URI as necessary
+  var uri = "ws://localhost:3000";
+  // Track the state of our connection with this variable
+  var state = "uninitialised";
+  var nickname = "";
+  var nicknameStatus = "unset";
+  
+  function init() {
+    openConnection();
+    document.getElementById("nickname-submit").setAttribute("onclick", "changeNickname()");
+    document.getElementById("chatroom-submit").setAttribute("onclick", "createChatroom()");
+    document.getElementById("new-message-submit").setAttribute("onclick", "postMessage()");
+  }
+  
+  function openConnection() {
+    websocket = new WebSocket(uri);
+    websocket.onopen = function(event) { onOpen(event) };
+    websocket.onclose = function(event) { onClose(event) };
+    websocket.onmessage = function(event) { onMessage(event) };
+    websocket.onerror = function(event) { onError(event) };
+  }
+  
+  // Event handlers
+  
+  function onOpen(event) {
+    state = "connected";
+    send("{\"get_chatrooms\":1}");
+  }
+  
+  function onClose(event) {
+    state = "closed";
+    console.log("Connection closed");
+  }
+  
+  function onMessage(event) {
+    var message = event.data;
+    console.log("Incoming message: " + message);
+    var data = JSON.parse(message);
+    
+    var alertMsg = data["alert"];
+    if (alertMsg != null) {
+      alert(alertMsg);
+    }
+    
+    if (nicknameStatus == "unverified") {
+      var nickStatus = data["status"];
+      if (nickStatus != null) {
+        if (nickStatus == "Nickname set") {
+          document.getElementById("nickname-status").innerHTML = "Using nickname " + nickname;
+          nickStatus = "verified";
+        } else if (nickStatus == "Nickname already reserved") {
+          document.getElementById("nickname-status").innerHTML = nickname + " is already reserved or invalid";
+          nickStatus = "unset";
+        }
+      }
+    }
+    
+    if (state == "connected") {
+      var chatrooms = data["chatrooms"];
+      if (chatrooms != null) {
+        console.log("Chatrooms: " + chatrooms);
+        showIndex();
+        populateChatrooms(chatrooms);
+        
+      }
+    }
+    var messages = data["new_messages"];
+    if (messages != null) {
+      if (state == "joining") {
+        clearChatroom();
+        state = "in-chat";
+        showChatroom();
+      }
+      appendMessages(messages);
+    }
+  }
+  
+  function onError(event) {
+    var message = event.data;
+    console.log("Error: " + message);
+  }
+  
+  // Utility functions
+  
+  function send(message) {
+    console.log("Outgoing message: " + message);
+    websocket.send(message);
+  }
+  
+  function showIndex() {
+    document.getElementById("div-header").removeAttribute("hidden");
+    document.getElementById("div-loading").setAttribute("hidden",true);
+    document.getElementById("div-chatroom-selection").removeAttribute("hidden");
+    document.getElementById("div-chatroom").setAttribute("hidden",true);
+  }
+  
+  function showChatroom() {
+    document.getElementById("div-header").removeAttribute("hidden");
+    document.getElementById("div-loading").setAttribute("hidden",true);
+    document.getElementById("div-chatroom-selection").setAttribute("hidden",true);
+    document.getElementById("div-chatroom").removeAttribute("hidden");
+  }
+  
+  function changeNickname() {
+    var nick = document.getElementById("nickname-input").value;
+    if (nick == "") {
+      return;
+    }
+    nickname = nick;
+    nicknameStatus = "unverified";
+    send("{\"set_nickname\":\"" + nick + "\"}");
+  }
+  
+  function populateChatrooms(chatrooms) {
+    var ul = document.getElementById("chatroom-list");
+    for (i = 0; i < chatrooms.length; ++i) {
+      var item = document.createElement("LI");
+      var button = document.createElement("INPUT");
+      var name = chatrooms[i];
+      // This is probably not 100% secure and not a long term solution
+      var sanitised = name.replace("\"", "\\\"");
+      var sanitised = name.replace("\'", "\\\'");
+      button.setAttribute("type", "button");
+      button.setAttribute("value", name);
+      button.setAttribute("onclick", "joinChatroom(\"" + sanitised + "\")");
+      item.appendChild(button);
+      ul.appendChild(item);
+    }
+  }
+  
+  function createChatroom() {
+    var name = document.getElementById("chatroom-input").value;
+    if (name == "") {
+      return;
+    }
+    send("{\"create_chatroom\":\"" + name + "\"}");
+  }
+  
+  function joinChatroom(chatroom) {
+    console.log("Joining chatroom " + chatroom);
+    state = "joining";
+    document.getElementById("chatroom-name").innerHTML = chatroom;
+    send("{\"join_chatroom\":\"" + chatroom + "\"}");
+  }
+  
+  function clearChatroom() {
+    document.getElementById("chatroom-message-list").innerHTML = "";
+  }
+  
+  function appendMessages(messages) {
+    var messagelist = document.getElementById("chatroom-message-list");
+    for (i = 0; i < messages.length; ++i) {
+      var item = document.createElement("P");
+      var timestamp = document.createElement("SPAN");
+      timestamp.innerHTML = unixTimeToTimestamp(messages[i].timestamp);
+      var user = document.createElement("STRONG");
+      user.innerHTML = " " + sanitiseHtmlString(messages[i].user) + ": ";
+      var content = document.createElement("SPAN");
+      content.innerHTML = sanitiseHtmlString(messages[i].content);
+      item.appendChild(timestamp);
+      item.appendChild(user);
+      item.appendChild(content);
+      messagelist.appendChild(item);
+    }
+    // Scroll down
+    var div = document.getElementById("message-box");
+    div.scrollTop = div.scrollHeight;
+  }
+  
+  function postMessage() {
+    var message = document.getElementById("new-message-input").value;
+    if (message == "") {
+      return;
+    }
+    document.getElementById("new-message-input").value = "";
+    send("{\"message\":\"" + sanitiseJsonString(message) + "\"}");
+  }
+  
+  function unixTimeToTimestamp(unixTime) {
+    var date = new Date(unixTime);
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    if (minutes < 10)
+      minutes = "0" + minutes;
+    var seconds = date.getSeconds();
+    if (seconds < 10)
+      seconds = "0" + seconds;
+    return "[" + hours + ":" + minutes + ":" + seconds + "]";
+  }
+  
+  function sanitiseHtmlString(original) {
+    var sanitised = original.replace("&", "&amp;");
+    sanitised = original.replace("<", "&lt;");
+    sanitised = original.replace(">", "&gt;");
+    return sanitised;
+  }
+  
+  function sanitiseJsonString(original) {
+    var sanitised = original.replace("\\", "\\\\");
+    sanitised = original.replace("\"", "\\\"");
+    return sanitised;
+  }
+  
+  //
+  window.addEventListener("load", init, false);
+</script>

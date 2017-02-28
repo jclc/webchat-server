@@ -190,6 +190,7 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 		if (createChatroom(name)) {
 			std::cout << "Created new chatroom " << name << std::endl;
 		}
+		sendChatrooms(hdl);
 		return;
 	}
 	search = message.find("join_chatroom");
@@ -214,21 +215,25 @@ void Server::onMessage(connection_hdl hdl, message_ptr msg) {
 		if (setNickname(hdl, nick)) {
 			sendMessage(hdl, "{\"status\":\"Nickname set\"}");
 		} else {
-			sendMessage(hdl, "{\"alert\":\"Nickname already reserved\"}");
+			sendMessage(hdl, "{\"status\":\"Nickname already reserved\"}");
 		}
 		return;
 	}
 	search = message.find("get_chatrooms");
 	if (search != message.end()) {
 		// User wants to get a list of chatrooms
-		json response;
-		response["chatrooms"] = json::array();
-		for (Chatroom* chatroom : m_chatrooms) {
-			response["chatrooms"].push_back(chatroom->m_name);
-		}
-		sendMessage(hdl, response.dump());
-		return;
+		sendChatrooms(hdl);
 	}
+}
+
+void Server::sendChatrooms(connection_hdl hdl) {
+	json response;
+	response["chatrooms"] = json::array();
+	for (Chatroom* chatroom : m_chatrooms) {
+		response["chatrooms"].push_back(chatroom->m_name);
+	}
+	sendMessage(hdl, response.dump());
+	return;
 }
 
 std::string Server::getNickname(const connection_hdl con_hdl) const {
