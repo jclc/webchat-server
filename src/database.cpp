@@ -65,9 +65,10 @@ void getMessages(sqlite3 *db, MessageData &data, unsigned int howMany) {
 		msg->user = argv[0];
 		msg->timestamp = std::atoi(argv[1]);
 		msg->content = argv[2];
-		data->data->push_back(msg);
+		data->data->insert(data->data->begin(), msg);
 		return 0;
 	}, &data, &err_msg);
+
 	return;
 }
 
