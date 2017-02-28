@@ -15,6 +15,7 @@ This is a WebSockets based webchat server with a simple static HTML browser clie
 * WebSocket++ 0.7.0
 * JSON for Modern C++
 * Asio
+
 These dependencies are located in "external/" and are included in the repository or fetched with git.
 
 ## Building
