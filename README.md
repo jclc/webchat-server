@@ -15,6 +15,7 @@ This is a WebSockets based webchat server with a simple static HTML browser clie
 * WebSocket++ 0.7.0
 * JSON for Modern C++
 * Asio
+
 These dependencies are located in "external/" and are included in the repository or fetched with git.
 
 ## Building
@@ -31,7 +32,7 @@ Change the port with the `-p` or `--port` switch. The default port is 80.
 
 Display help message or version string with `-h`|`--help` or `-V`|`--version` respectively.
 
-Shut down the application with either ctrl+c or by sending a SIGINT signal, for example using `htop` or `killall -s 2 webchat-server`. The program will handle the signal terminate cleanly.
+Shut down the application with either ctrl+c or by sending a SIGINT signal, for example using `htop` or `killall -s 2 webchat-server`. The server will catch the signal and terminate cleanly.
 
 ## License
 
