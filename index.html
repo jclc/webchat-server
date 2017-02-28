@@ -50,7 +50,8 @@
 </html>
 <script language="javascript" type="text/javascript">
   // Change the URI as necessary
-  var uri = "ws://localhost:3000";
+  var httpUri = window.location.href;
+  var uri = httpUri.replace("http://", "ws://");
   // Track the state of our connection with this variable
   var state = "uninitialised";
   var nickname = "";
