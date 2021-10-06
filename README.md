@@ -2,6 +2,10 @@
 
 This is a WebSockets based webchat server with a simple static HTML browser client. You can join chatrooms or create new ones. Everything is connected via a JSON API, so external clients are also possible.
 
+## Newly Dockerised
+
+Updated to run in a container.
+
 ## Requirements
 
 * Linux 2.6 or newer
@@ -19,8 +23,6 @@ This is a WebSockets based webchat server with a simple static HTML browser clie
 These dependencies are located in "external/" and are included in the repository or fetched with git.
 
 ## Building
-
-First, clone the repository `git --recursive`. The '--recursive' switch is required for external dependencies.
 
 Create a build directory, for example with `mkdir build`. Run `cmake ..` in the build directory to create makefiles. Build with `make`.
 

@@ -16,7 +16,7 @@ namespace chat {
 #define CHATROOM_NAME_MIN_LENGTH 2
 #define CHATROOM_NAME_MAX_LENGTH 64
 
-using namespace nlohmann; // for json (jesus, who names namespaces after themselves?)
+using namespace nlohmann; // for json
 typedef websocketpp::server<websocketpp::config::asio> t_server;
 typedef websocketpp::frame::opcode::value opcode;
 typedef websocketpp::lib::error_code error;
